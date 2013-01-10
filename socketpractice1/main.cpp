@@ -6,38 +6,45 @@
 #include <netinet/in.h>     //Stellt Internet-Protokollfamilie bereit
 #include <unistd.h>         //Standard für symbolische Konstanten und Typen (Textersetzung beim Compalieren)
 #include <iostream>         //Ein-/Ausgabesystem auf objektorientierter Klassenhierarchie (Erweitert stdio)
-#include <fstream>          //Datein auf i/o Streams lesen und schreiben
 
 // ohne ".h" ist C++ Standard, mit ".h" sind veraltete Bibliotheken
 
 using namespace std;        //Im Gültigkeitsbereich der Datei wird der Namensbereich "std" durch using zur
-                            //Verüfung gestellt. Damit wird z.B. aus std::cout nur cout
+                            //Verfügung gestellt. Damit wird z.B. aus std::cout nur cout
 
 
 
-
-// Zum Bestimmen des String-Endes
-string find_line_end(string Zeile)
+//Funktion: "find_line_end", Rückgabewert: String
+// Zum Bestimmen des String-Endes. Da Eingebene Städtenamen mit ":" versehen werden, um das Eingabeende zu ermitteln.
+string find_line_end(string line)
 {
-    unsigned long Position;
-    Position = Zeile.find(":",0);
-    Zeile.erase(Position);
-    return Zeile;
+    //Deklaration: Variable: "position", Datentyp: unsigned long [bzgl. find Rückgabetyp von find()]
+    unsigned long position;
+    //Zuweisung: Variable "position" wird Position des ":"-Zeichens aus der Eingabe Zeile zugewiesen.
+    position = line.find(":",0);
+    //String-Funktion erase: Löscht alle Zeichen des Strings "line" ab Position.
+    line.erase(position);
+    //Rückgabe: Gibt String "line" zurück. Enthält alle Zeichen bis ausschließlich ":".
+    return line;
 }
 
-// Zur Abwicklung der Wetterabfrage
-string wetter(string stadt)
+// Funktion: "weather", Rückgabewert: String.
+// Zur Abwicklung der Wetterabfrage, gibt zur Eingabe der Stadt das jeweilige Wetter zurück.
+string weather(string city)
 {
-    string ausgabe;
+    //Deklaration: Variable "output", Datentyp: "string", Rückgabevariable für das Wetter
+    string output;
     
-    if(stadt=="Leipzig") ausgabe ="Sonnig, 20 Grad:";
-    else if(stadt=="Stuttgart") ausgabe="Sonnig, 23 Grad:";
-    else if(stadt=="Hamburg") ausgabe="Windig, 18 Grad:";
-    else if(stadt=="Erlangen") ausgabe="Regen, 19 Grad:";
-    else if(stadt=="Konstanz") ausgabe="Neblig, 24 Grad:";
-    else ausgabe="Bitte ueberpruefen Sie die Eingabe!:";
+    //Bedingungprüfung: Ordnet der Stadt das Wetter zu
+    if(city=="Leipzig") output ="Sonnig, 20 Grad:";
+    else if(city=="Stuttgart") output="Sonnig, 23 Grad:";
+    else if(city=="Hamburg") output="Windig, 18 Grad:";
+    else if(city=="Erlangen") output="Regen, 19 Grad:";
+    else if(city=="Konstanz") output="Neblig, 24 Grad:";
+    else output="Bitte ueberpruefen Sie die Eingabe!:";
     
-    return ausgabe;
+    //Rückgae: Gibt String "output" mit Wetterdaten zurück.
+    return output;
 }
 
 int main(int argc, char *argv[]){       //Hauptfunktion :: Dem Programm können Parameter übergeben werden
@@ -45,18 +52,18 @@ int main(int argc, char *argv[]){       //Hauptfunktion :: Dem Programm können 
     cout << "Wetter-Server" << endl;    //c-out ist Std-Ausgabestrom, "<<" bedeutet auf Strom schieben
                                         //end-l gibt Zeilenumbruch und sorgt für Anzeige
     
-    //Integer-Variablen deklarieren
+    //Deklaration: Variablen "server_socket" und "client_socket", Datentyp: integer, werden für die Socket-Deskriptoren genutzt.
     int server_socket, client_socket;
-    //Variable client_size vom Typ socklen_t (socket.h) für die Adresslänge
+    //Deklaration: Variable "client_size", Datentyp: socklen_t (socket.h), werdeb für die IP-Adresslänge der Clientadresse genutzt.
     socklen_t client_size;
-    //Variablen server_address, client vom (strukturierten Datentyp) sockaddr_in (netinet/in.h)
+    //Deklaration: Variablen "server_address" und "client_address", Datentyp: (strukturierten Datentyp) sockaddr_in (netinet/in.h), werden für die IP-Adressen genutzt.
     struct sockaddr_in server_address, client_address;
-    //char-Variablen deklarieren, Zeichenkette buffer mit 255
+    //Deklaration: "buffer", Datentyp: char, Speicher für "recv"-Empfang als Zeichenkette 255 Zeichen.
     char buffer[255];
-    //String-Deklaration für Ein-und Ausgabe
-    string eingabe,ausgabe;
+    //Deklaration: Variablen "input", "output", Datentyp: string, werden für Ein-und Ausgaben genutzt.
+    string input,output;
     
-    //sockfd ist Deskriptor eines Sockets
+    //server_socket ist Deskriptor eines Sockets
     //Protokolfamilie: AF_INET(netinet/in.h) stellt TCP bei verbindungsorieten Stream-Transfers, UDP bei verbindungslosen Stream-Transfers bereit
     //Type: SOCK_STREAM legt verbindungsorieten Stream-Fest
     //Protocol: 0 bedeutet Standardprotokoll benutzen
@@ -83,31 +90,51 @@ int main(int argc, char *argv[]){       //Hauptfunktion :: Dem Programm können 
         return EXIT_FAILURE;
     }
     
+    //listen :: Veretzt Server-Socket in einen passiven Betriebszustand
+    //Socket-Socket wartet auf Anfragen vom Client mit der Warteschlangengröße von 3 Anfragen.
+    //Ausgabe einer Fehlermeldung, falls "listen()" fehlschlägt
     if(listen(server_socket,3)==-1){
         printf("Fehler: listen() fehlgeschlagen!");
         return EXIT_FAILURE;
     }
     
+    //Endlosschleifen, damit Server dauerhaft in Betrieb ist.
     while(1){
+        //Liest Größe vom der Client-Adresse aus (durch sturkturierte Datentyp vorgegeben)
         client_size = sizeof(client_address);
+        //Meldung in der Konsole, dass Server auf Client wartet.
         cout << "Warte auf Anfrage vom Client..." << endl;
         
+        //IF-Bedinung mit Versuch der Verbindungsannahme
+        //Server-Socket akzeptiert Clientanfrage und stellt für die Client-Server-Verbindung
+        //neuen Socket, den Client-Socket, bereit
+        //Dabei werden die mit Zeigerversehenen Variablen "client_address" und "client_size"
+        //automatisch mit den Daten com Client ausgefüllt.
+        //Ausgabe einer Fehlermeldung, falls Annahme fehlschlägt.
         if((client_socket = accept(server_socket,(sockaddr*)&client_address,&client_size))==-1)
         {
             cout<<("Fehler bei accept")<<endl;
             return EXIT_FAILURE;
         }
         
+        //Anzeige von Client-IP in der Serverkonsole 
         printf("Client: %s\n",inet_ntoa(client_address.sin_addr));
         
+        //Emfpang der Nachricht der Client-Server-Verbindung (bzgl "client_socket")
+        //Nachricht wird in der Speicher-Variable "buffer" geschrieben.
         recv(client_socket, buffer, sizeof(buffer),0);
         
-        ausgabe = wetter(find_line_end(buffer));
+        //In die Ausgabe wird Rückgabe der "weather"-Funktion geschrieben, welche die "find_line_end"-Funktion als Parameter enthält, die wiederum den "buffer" als Paramter übergeben bekommt.
+        output = weather(find_line_end(buffer));
         
-        send(client_socket, ausgabe.c_str(),ausgabe.size(),0);
+        //Server sendet anschließend über die Verbindung ("client_socket" )
+        //die string Ausgabe wird mit "c.str()" in ein Feld geschrieben und liefert einen Zeiger auf das Feld zurück. Hängt eine 0 am Ende an (als C-String-Endzeichen)
+        //Es werden mit 0-Bits für Optionen angehangen, also werden keine Flags o.ä. übertragen
+        send(client_socket, output.c_str(),output.size(),0);
         
+        
+        //Verbindung zw. Client und Server wird geschlossen
         close(client_socket);
     }
     
 }
-
